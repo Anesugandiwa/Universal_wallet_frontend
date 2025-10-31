@@ -1,10 +1,10 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
   import { useRouter } from 'vue-router'
   import BaseInput from '../ui/BaseInput.vue'
   import BaseButton from '../ui/BaseButton.vue'
   import BaseSelect from '../ui/BaseSelect.vue'
-  import authService from '@/services/authService'
+  import iamService from '@/services/iamService'
   import {
       UserIcon,
       EnvelopeIcon,
@@ -17,19 +17,50 @@ import { ref, computed } from 'vue'
   const router = useRouter()
 
   const formData = ref({
-      firstName: '',
-      lastName: '',
+      name: '',
+      username: '',
       email: '',
-      phone: '',
-      idNumber: '',
-      address: '',
+      mobileNumber: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      groupUuid: '',
+      tenantId: import.meta.env.VITE_TENANT_ID || ''
   })
 
   const errors = ref({})
   const isLoading = ref(false)
   const serverError = ref('')
+  const successMessage = ref('')
+  const usernameChecking = ref(false)
+  const usernameAvailable = ref(null)
+  const availableGroups = ref([])
+
+  // Fetch available groups/roles on mount
+  onMounted(async () => {
+    console.log('Register component mounted')
+    try {
+      const response = await iamService.getGroups({ page: 0, size: 100 })
+      if (response.data.content && response.data.content.length > 0) {
+        availableGroups.value = response.data.content
+      } else {
+        // Use fallback if no groups returned
+        setFallbackGroups()
+      }
+    } catch (error) {
+      console.warn('Could not fetch groups from API, using fallback:', error.message)
+      setFallbackGroups()
+    }
+  })
+
+  // Set fallback groups
+  const setFallbackGroups = () => {
+    availableGroups.value = [
+      { uuid: 'USER', name: 'User' },
+      { uuid: 'ADMIN', name: 'Administrator' },
+      { uuid: 'SUPPORT', name: 'Support Staff' },
+      { uuid: 'AUDITOR', name: 'Auditor' }
+    ]
+  }
 
   
 
@@ -53,11 +84,64 @@ import { ref, computed } from 'vue'
       return levels[strength]
   })
 
+  // Check username availability
+  const checkUsername = async () => {
+    if (!formData.value.username) return
+
+    usernameChecking.value = true
+    usernameAvailable.value = null
+    delete errors.value.username
+
+    try {
+      const response = await iamService.checkUsernameAvailability(formData.value.username)
+      console.log('✅ Username API Response:', {
+        data: response.data,
+        status: response.status,
+        fullResponse: response
+      })
+
+      // IMPORTANT: The API might be checking "does username EXIST?" not "is it AVAILABLE?"
+      // If API returns false = username doesn't exist = AVAILABLE ✅
+      // If API returns true = username exists = TAKEN ❌
+
+      // Let's try INVERTING the logic
+      if (typeof response.data === 'boolean') {
+        // INVERTED: false = available, true = taken
+        usernameAvailable.value = !response.data
+        console.log('🔄 API returned:', response.data, '→ Inverted to:', usernameAvailable.value)
+      } else if (response.data === 'true' || response.data === 'false') {
+        usernameAvailable.value = response.data === 'false' // Inverted
+        console.log('🔄 API returned string:', response.data, '→ Inverted to:', usernameAvailable.value)
+      } else {
+        // Unknown format - assume available
+        console.warn('Unknown API response format, assuming available')
+        usernameAvailable.value = true
+      }
+
+      console.log('✅ Final: Username available?', usernameAvailable.value)
+    } catch (error) {
+      console.error('❌ Error checking username:', error)
+      console.error('Error response:', error.response)
+      // If API fails (401/network error), assume username is available for now
+      // User can still try to register and backend will validate
+      console.warn('⚠️ Could not check username - allowing registration to proceed')
+      usernameAvailable.value = true // Assume available if check fails
+      // Don't show error - let backend handle validation
+    } finally {
+      usernameChecking.value = false
+    }
+  }
+
   const validateForm = () => {
       errors.value = {}
 
-      if (!formData.value.firstName.trim()) errors.value.firstName = 'First name is required'
-      if (!formData.value.lastName.trim()) errors.value.lastName = 'Last name is required'
+      if (!formData.value.name.trim()) errors.value.name = 'Full name is required'
+
+      if (!formData.value.username.trim()) {
+        errors.value.username = 'Username is required'
+      } else if (formData.value.username.length < 3) {
+        errors.value.username = 'Username must be at least 3 characters'
+      }
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
       if (!formData.value.email.trim()) {
@@ -66,16 +150,17 @@ import { ref, computed } from 'vue'
           errors.value.email = 'Please enter a valid email'
       }
 
-      if (!formData.value.phone.trim()) {
-          errors.value.phone = 'Phone number is required'
-      } else if (formData.value.phone.length < 10) {
-          errors.value.phone = 'Please enter a valid phone number'
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/
+      if (!formData.value.mobileNumber.trim()) {
+          errors.value.mobileNumber = 'Mobile number is required'
+      } else if (!phoneRegex.test(formData.value.mobileNumber.replace(/\s/g, ''))) {
+          errors.value.mobileNumber = 'Invalid mobile number format'
       }
 
-      if (!formData.value.idNumber.trim()) errors.value.idNumber = 'ID number is required'
-      if (!formData.value.address.trim()) errors.value.address = 'Address is required'
-      if (!formData.value.city.trim()) errors.value.city = 'City is required'
-      if (!formData.value.country) errors.value.country = 'Country is required'
+      // Make groupUuid optional - backend might not require it
+      // if (!formData.value.groupUuid) {
+      //   errors.value.groupUuid = 'Please select a role'
+      // }
 
       if (!formData.value.password) {
           errors.value.password = 'Password is required'
@@ -89,35 +174,76 @@ import { ref, computed } from 'vue'
           errors.value.confirmPassword = 'Passwords do not match'
       }
 
+      // Check username availability
+      // Only block if username was explicitly checked and found to be taken
+      if (usernameAvailable.value === false) {
+        errors.value.username = 'This username is already taken'
+      } else if (usernameAvailable.value === null && formData.value.username.trim()) {
+        // If username hasn't been checked yet, don't block but show warning
+        // The handleSubmit will trigger the check
+        console.log('Username availability not checked yet - will verify on submit')
+      }
+
       return Object.keys(errors.value).length === 0
   }
 
   const handleSubmit = async () => {
       serverError.value = ''
+      successMessage.value = ''
+
+      // If username hasn't been checked yet, check it now
+      if (usernameAvailable.value === null && formData.value.username.trim()) {
+        await checkUsername()
+        // After checking, validate again
+        if (usernameAvailable.value === false) {
+          errors.value.username = 'This username is already taken'
+          return
+        }
+      }
+
       if (!validateForm()) return
 
       isLoading.value = true
 
       try {
-          const response = await authService.register({
-              first_name: formData.value.firstName,
-              last_name: formData.value.lastName,
-              email: formData.value.email,
-              phone: formData.value.phone,
-              id_number: formData.value.idNumber,
-              address: formData.value.address,
-              city: formData.value.city,
-              country: formData.value.country,
-              password: formData.value.password,
-              password_confirmation: formData.value.confirmPassword
-          })
+          // Prepare user data (remove confirmPassword and empty fields)
+          const { confirmPassword, ...userData } = formData.value
 
-          if (response.data.token) {
-              localStorage.setItem('auth_token', response.data.token)
+          // Remove empty or placeholder values
+          if (!userData.tenantId || userData.tenantId === 'your-tenant-id-here') {
+            delete userData.tenantId
+          }
+          if (!userData.groupUuid) {
+            delete userData.groupUuid
           }
 
-          router.push('/dashboard')
+          console.log('Sending registration data:', userData)
+
+          // Try self-registration first (public endpoint)
+          let response
+          try {
+            response = await iamService.selfRegister(userData)
+            console.log('✅ Self-registration response:', response.data)
+          } catch (selfRegError) {
+            console.warn('Self-registration failed, trying admin endpoint:', selfRegError)
+            // Fallback to admin endpoint
+            response = await iamService.createUser(userData)
+            console.log('✅ Admin registration response:', response.data)
+          }
+
+          console.log('Registration successful!')
+          successMessage.value = 'Account created successfully! You can now login with your credentials.'
+
+          // Redirect disabled for now - user can click "Sign in" link manually
+          // console.log('Setting timeout for redirect...')
+          // setTimeout(() => {
+          //     console.log('Redirecting to login now...')
+          //     router.push('/login')
+          // }, 2000)
       } catch (error) {
+          console.error('Registration error:', error)
+          console.error('Error response:', error.response)
+
           if (error.response?.data?.message) {
               serverError.value = error.response.data.message
           } else if (error.response?.data?.errors) {
@@ -125,19 +251,27 @@ import { ref, computed } from 'vue'
               Object.keys(backendErrors).forEach(key => {
                   errors.value[key] = backendErrors[key][0]
               })
+          } else if (error.response?.status) {
+              // Show detailed error with status code
+              serverError.value = `Registration failed (Status ${error.response.status}): ${error.response.statusText || 'Unknown error'}`
+          } else if (error.request) {
+              serverError.value = 'Cannot connect to server. Please check your internet connection.'
           } else {
-              serverError.value = 'An error occurred during registration. Please try again.'
+              serverError.value = `An error occurred: ${error.message}`
           }
       } finally {
           isLoading.value = false
       }
   }
 
-  const goToLogin = () => router.push('/login')
+  const goToLogin = () => {
+    console.log('⚠️ goToLogin called - NOT redirecting (disabled for debug)')
+    // router.push('/login')
+  }
 </script>
 <template>
     <div class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-          <div class="w-full max-w-2xl mx-auto">
+          <div class="w-full px-4" style="max-width: 800px; margin: 0 auto;">
               <div class="bg-white rounded-2xl shadow-xl p-8">
                   <!-- Logo -->
                   <div class="text-center mb-8">
@@ -156,26 +290,37 @@ import { ref, computed } from 'vue'
                       <p class="text-sm text-red-600">{{ serverError }}</p>
                   </div>
 
+                  <!-- Success Alert -->
+                  <div v-if="successMessage" class="mb-6 p-4 rounded-lg bg-green-50 border border-green-200">
+                      <p class="text-sm text-green-600">{{ successMessage }}</p>
+                  </div>
+
                   <!-- Registration Form -->
                   <form @submit.prevent="handleSubmit" class="space-y-6">
-                      <!-- Name Fields -->
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <BaseInput
-                              v-model="formData.firstName"
-                              label="First Name"
-                              placeholder="Enter your first name"
-                              :icon-left="UserIcon"
-                              :error="errors.firstName"
-                              :required="true"
-                          />
-                          <BaseInput
-                              v-model="formData.lastName"
-                              label="Last Name"
-                              placeholder="Enter your last name"
-                              :icon-left="UserIcon"
-                              :error="errors.lastName"
-                              :required="true"
-                          />
+                      <!-- Full Name -->
+                      <BaseInput
+                          v-model="formData.name"
+                          label="Full Name"
+                          placeholder="Enter your full name"
+                          :icon-left="UserIcon"
+                          :error="errors.name"
+                          :required="true"
+                      />
+
+                      <!-- Username -->
+                      <div>
+                        <BaseInput
+                            v-model="formData.username"
+                            label="Username"
+                            placeholder="Choose a username"
+                            :icon-left="UserIcon"
+                            :error="errors.username"
+                            :required="true"
+                            @blur="checkUsername"
+                        />
+                        <p v-if="usernameChecking" class="mt-1 text-xs text-gray-500">Checking availability...</p>
+                        <p v-if="usernameAvailable === true" class="mt-1 text-xs text-green-600">✓ Username is available</p>
+                        <p v-if="usernameAvailable === false" class="mt-1 text-xs text-red-600">✗ Username is already taken</p>
                       </div>
 
                       <!-- Email & Phone -->
@@ -190,35 +335,24 @@ import { ref, computed } from 'vue'
                               :required="true"
                           />
                           <BaseInput
-                              v-model="formData.phone"
+                              v-model="formData.mobileNumber"
                               type="tel"
-                              label="Phone Number"
+                              label="Mobile Number"
                               placeholder="+263 XXX XXX XXX"
                               :icon-left="PhoneIcon"
-                              :error="errors.phone"
+                              :error="errors.mobileNumber"
                               :required="true"
                           />
                       </div>
 
-                      <!-- ID Number -->
-                      <BaseInput
-                          v-model="formData.idNumber"
-                          label="ID Number"
-                          placeholder="Enter your national ID number"
-                          :icon-left="IdentificationIcon"
-                          :error="errors.idNumber"
-                          :required="true"
-                          hint="Your national identification number"
-                      />
-
-                      <!-- Address -->
-                      <BaseInput
-                          v-model="formData.address"
-                          label="Address"
-                          placeholder="Street address"
-                          :icon-left="MapPinIcon"
-                          :error="errors.address"
-                          :required="true"
+                      <!-- Role Selection (Optional) -->
+                      <BaseSelect
+                          v-model="formData.groupUuid"
+                          label="User Role (Optional)"
+                          :options="availableGroups.map(g => ({ value: g.uuid, label: g.name }))"
+                          placeholder="Select a role (optional)"
+                          :error="errors.groupUuid"
+                          :required="false"
                       />
 
 

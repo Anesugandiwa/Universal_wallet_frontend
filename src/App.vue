@@ -1,10 +1,9 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+// App.vue is the root component that renders router views
 </script>
 
 <template>
-
-  <HelloWorld msg="Vite + Vue" />
+  <router-view />
 </template>
 
 <style scoped>

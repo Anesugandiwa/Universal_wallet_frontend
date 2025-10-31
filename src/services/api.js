@@ -2,16 +2,27 @@ import axios from 'axios'
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 10000, // 10 seconds
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
+// Debug: Log API base URL
+console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL)
+console.log('All env vars:', import.meta.env)
+
 // Request interceptor - Add auth token to requests
 api.interceptors.request.use(
   (config) => {
+    // Debug: Log request details
+    console.log('API Request:', {
+      method: config.method.toUpperCase(),
+      url: config.baseURL + config.url,
+      data: config.data
+    })
+
     const token = localStorage.getItem('auth_token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -19,6 +30,7 @@ api.interceptors.request.use(
     return config
   },
   (error) => {
+    console.error('Request interceptor error:', error)
     return Promise.reject(error)
   }
 )
@@ -34,8 +46,9 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           // Unauthorized - clear token and redirect to login
+          console.warn('⚠️ 401 Unauthorized - NOT redirecting (disabled for debug)')
           localStorage.removeItem('auth_token')
-          window.location.href = '/login'
+          // DISABLED FOR DEBUG: window.location.href = '/login'
           break
         case 403:
           console.error('Access forbidden')

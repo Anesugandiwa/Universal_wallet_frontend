@@ -5,13 +5,13 @@
   import BaseInput from '../ui/BaseInput.vue'
   import BaseButton from '../ui/BaseButton.vue'
   import authService from '@/services/authService'
-  import { EnvelopeIcon, LockClosedIcon } from '@heroicons/vue/24/outline'
+  import { EnvelopeIcon, LockClosedIcon, UserIcon } from '@heroicons/vue/24/outline'
 
   const router = useRouter()
 
   // Form data
   const formData = ref({
-      email: '',
+      username: '',  // Changed from email to username (can be email or username)
       password: '',
       rememberMe: false
   })
@@ -22,17 +22,21 @@
   // Form state
   const isLoading = ref(false)
   const serverError = ref('')
+  const successMessage = ref('')
+
+  // 2FA state
+  const requires2FA = ref(false)
+  const otpCode = ref('')
+  const otpError = ref('')
+  const isVerifyingOtp = ref(false)
 
   // Validate form
   const validateForm = () => {
       errors.value = {}
 
-      // Email validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!formData.value.email.trim()) {
-          errors.value.email = 'Email is required'
-      } else if (!emailRegex.test(formData.value.email)) {
-          errors.value.email = 'Please enter a valid email'
+      // Username validation (can be email or username)
+      if (!formData.value.username.trim()) {
+          errors.value.username = 'Username or email is required'
       }
 
       // Password validation
@@ -48,6 +52,7 @@
   // Handle form submission
   const handleSubmit = async () => {
       serverError.value = ''
+      successMessage.value = ''
 
       if (!validateForm()) return
 
@@ -55,19 +60,30 @@
 
       try {
           const response = await authService.login({
-              email: formData.value.email,
+              username: formData.value.username,
               password: formData.value.password,
-              remember: formData.value.rememberMe
+              grant_type: 'password'
           })
 
-          // Store token
-          if (response.data.token) {
-              localStorage.setItem('auth_token', response.data.token)
+          // Check if response indicates 2FA is required
+          if (response.data.requires2FA || response.data.requiresTwoFactor) {
+              requires2FA.value = true
+              successMessage.value = 'Please enter the OTP sent to your registered contact'
+              isLoading.value = false
+              return
           }
 
-          // Store user data if available
-          if (response.data.user) {
-              localStorage.setItem('user', JSON.stringify(response.data.user))
+          // Store tokens
+          if (response.data) {
+              authService.storeTokens(response.data)
+          }
+
+          // Get user details after successful login
+          try {
+              const userResponse = await authService.getUserDetails()
+              localStorage.setItem('user_details', JSON.stringify(userResponse.data))
+          } catch (error) {
+              console.error('Could not fetch user details:', error)
           }
 
           // Redirect to dashboard
@@ -75,11 +91,17 @@
 
       } catch (error) {
           if (error.response?.status === 401) {
-              serverError.value = 'Invalid email or password'
+              serverError.value = 'Invalid username or password'
+          } else if (error.response?.status === 403) {
+              // Might indicate 2FA is required
+              requires2FA.value = true
+              successMessage.value = 'Please enter the OTP sent to your registered contact'
           } else if (error.response?.data?.message) {
               serverError.value = error.response.data.message
+          } else if (error.response?.data?.error_description) {
+              // OAuth error format
+              serverError.value = error.response.data.error_description
           } else if (error.response?.data?.errors) {
-              // Handle validation errors from backend
               const backendErrors = error.response.data.errors
               Object.keys(backendErrors).forEach(key => {
                   errors.value[key] = backendErrors[key][0]
@@ -90,6 +112,70 @@
       } finally {
           isLoading.value = false
       }
+  }
+
+  // Handle 2FA OTP verification
+  const handleOtpVerification = async () => {
+      if (!otpCode.value || otpCode.value.length < 4) {
+          otpError.value = 'Please enter a valid OTP'
+          return
+      }
+
+      otpError.value = ''
+      isVerifyingOtp.value = true
+
+      try {
+          const response = await authService.verifyTwoFactor({
+              otp: otpCode.value,
+              username: formData.value.username
+          })
+
+          // Store tokens after successful 2FA
+          if (response.data) {
+              authService.storeTokens(response.data)
+          }
+
+          // Get user details
+          try {
+              const userResponse = await authService.getUserDetails()
+              localStorage.setItem('user_details', JSON.stringify(userResponse.data))
+          } catch (error) {
+              console.error('Could not fetch user details:', error)
+          }
+
+          // Redirect to dashboard
+          router.push('/dashboard')
+
+      } catch (error) {
+          if (error.response?.data?.message) {
+              otpError.value = error.response.data.message
+          } else {
+              otpError.value = 'Invalid OTP. Please try again.'
+          }
+      } finally {
+          isVerifyingOtp.value = false
+      }
+  }
+
+  // Resend OTP
+  const handleResendOtp = async () => {
+      try {
+          await authService.resendLoginOtp(formData.value.username)
+          successMessage.value = 'OTP has been resent to your registered contact'
+          setTimeout(() => {
+              successMessage.value = ''
+          }, 3000)
+      } catch (error) {
+          serverError.value = 'Could not resend OTP. Please try again.'
+      }
+  }
+
+  // Cancel 2FA and go back to login
+  const cancel2FA = () => {
+      requires2FA.value = false
+      otpCode.value = ''
+      otpError.value = ''
+      successMessage.value = ''
   }
 
   // Navigate to register
@@ -105,7 +191,7 @@
 
   <template>
       <div class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-          <div class="w-full max-w-md mx-auto">
+          <div class="w-full px-4" style="max-width: 800px; margin: 0 auto;">
               <!-- Main Card -->
               <div class="bg-white rounded-2xl shadow-xl p-8">
                   <!-- Logo -->
@@ -125,16 +211,69 @@
                       <p class="text-sm text-red-600">{{ serverError }}</p>
                   </div>
 
-                  <!-- Login Form -->
-                  <form @submit.prevent="handleSubmit" class="space-y-6">
-                      <!-- Email -->
+                  <!-- Success Alert -->
+                  <div v-if="successMessage" class="mb-6 p-4 rounded-lg bg-green-50 border border-green-200">
+                      <p class="text-sm text-green-600">{{ successMessage }}</p>
+                  </div>
+
+                  <!-- 2FA OTP Form -->
+                  <div v-if="requires2FA" class="space-y-6">
+                      <div class="text-center mb-4">
+                          <p class="text-sm text-gray-600">
+                              Enter the OTP sent to your registered email or mobile number
+                          </p>
+                      </div>
+
                       <BaseInput
-                          v-model="formData.email"
-                          type="email"
-                          label="Email Address"
-                          placeholder="your@email.com"
-                          :icon-left="EnvelopeIcon"
-                          :error="errors.email"
+                          v-model="otpCode"
+                          type="text"
+                          label="One-Time Password (OTP)"
+                          placeholder="Enter 6-digit OTP"
+                          :icon-left="LockClosedIcon"
+                          :error="otpError"
+                          :required="true"
+                          maxlength="6"
+                      />
+
+                      <div class="flex gap-3">
+                          <BaseButton
+                              @click="handleOtpVerification"
+                              variant="primary"
+                              size="lg"
+                              :full-width="true"
+                              :loading="isVerifyingOtp"
+                              text="Verify OTP"
+                          />
+                      </div>
+
+                      <div class="flex items-center justify-between text-sm">
+                          <button
+                              @click="handleResendOtp"
+                              type="button"
+                              class="text-primary hover:text-primary-dark font-medium"
+                          >
+                              Resend OTP
+                          </button>
+                          <button
+                              @click="cancel2FA"
+                              type="button"
+                              class="text-gray-600 hover:text-gray-900"
+                          >
+                              Back to Login
+                          </button>
+                      </div>
+                  </div>
+
+                  <!-- Login Form -->
+                  <form v-else @submit.prevent="handleSubmit" class="space-y-6">
+                      <!-- Username/Email -->
+                      <BaseInput
+                          v-model="formData.username"
+                          type="text"
+                          label="Username or Email"
+                          placeholder="Enter your username or email"
+                          :icon-left="UserIcon"
+                          :error="errors.username"
                           :required="true"
                       />
 
