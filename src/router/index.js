@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import Login from '../components/Auth/login.vue'
 import Register from '../components/Auth/register.vue'
+import ForgotPassword from '../components/Auth/ForgotPassword.vue'
+import ResetPassword from '../components/Auth/ResetPassword.vue'
 import Dashboard from '../views/Dashboard.vue'
 
 const routes = [
@@ -15,52 +17,87 @@ const routes = [
     component: Dashboard,
     meta: { requiresAuth: true }
   },
+  // Core Admin Functions
   {
     path: '/users',
     name: 'Users',
-    component: () => import('../views/Users.vue'),
-    meta: { requiresAuth: true }
+    //component: () => import('../views/admin/Users.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/customers',
+    name: 'Customers',
+    //component: () => import('../views/admin/Customers.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/transactions',
     name: 'Transactions',
-    component: () => import('../views/Transactions.vue'),
-    meta: { requiresAuth: true }
+    //component: () => import('../views/admin/Transactions.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+
+  // Financial Management
+  {
+    path: '/fees',
+    name: 'FeesAndCharges',
+    //component: () => import('../views/admin/FeesAndCharges.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
-    path: '/send',
-    name: 'SendMoney',
-    component: () => import('../views/SendMoney.vue'),
-    meta: { requiresAuth: true }
+    path: '/commissions',
+    name: 'Commissions',
+    //component: () => import('../views/admin/Commissions.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+
+  // Agents & Merchants
+  {
+    path: '/agents',
+    name: 'Agents',
+    //component: () => import('../views/admin/Agents.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
-    path: '/receive',
-    name: 'ReceiveMoney',
-    component: () => import('../views/ReceiveMoney.vue'),
-    meta: { requiresAuth: true }
+    path: '/merchants',
+    name: 'Merchants',
+    //component: () => import('../views/admin/Merchants.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
+
+  // Reports & Monitoring
   {
-    path: '/exchange',
-    name: 'Exchange',
-    component: () => import('../views/Exchange.vue'),
-    meta: { requiresAuth: true }
+    path: '/reports',
+    name: 'Reports',
+    //component: () => import('../views/admin/Reports.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/audit',
     name: 'AuditLogs',
-    component: () => import('../views/AuditLogs.vue'),
-    meta: { requiresAuth: true }
+    //component: () => import('../views/admin/AuditLogs.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+
+  // System Configuration
+  {
+    path: '/notifications',
+    name: 'Notifications',
+    //component: () => import('../views/admin/Notifications.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: () => import('../views/Settings.vue'),
-    meta: { requiresAuth: true }
+    //component: () => import('../views/admin/Settings.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
   },
+
+  // User Profile (All authenticated users)
   {
     path: '/profile',
     name: 'Profile',
-    component: () => import('../views/Profile.vue'),
+    //component: () => import('../views/Profile.vue'),
     meta: { requiresAuth: true }
   },
   {
@@ -75,6 +112,18 @@ const routes = [
     component: Register,
     meta: { requiresGuest: true }
   },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
+    meta: { requiresGuest: true }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword,
+    meta: { requiresGuest: true }
+  },
 ]
 
 const router = createRouter({
@@ -85,7 +134,18 @@ const router = createRouter({
 // Navigation guard to protect routes
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('auth_token')
-  const isAuthenticated = !!token
+  const tokenExpiresAt = localStorage.getItem('token_expires_at')
+
+  // Check if token exists and is not expired
+  let isAuthenticated = false
+  if (token) {
+    if (tokenExpiresAt) {
+      isAuthenticated = Date.now() < parseInt(tokenExpiresAt)
+    } else {
+      // If no expiry time, assume token is valid
+      isAuthenticated = true
+    }
+  }
 
   console.log('🔒 Router Guard:', {
     from: from.path,

@@ -3,6 +3,14 @@ import {ref,computed} from 'vue'
 import authService from '@/services/authService'
 
 export const useAuthStore = defineStore('auth', () => {
+    // Mock user for testing (remove in production)
+    const mockUser = {
+        id: 1,
+        name: 'Test User',
+        email: 'test@example.com',
+        username: 'testuser'
+    }
+
     const user = ref(null)
     const token = ref(localStorage.getItem('token') || null)
     const loading = ref(false)
@@ -88,20 +96,32 @@ export const useAuthStore = defineStore('auth', () => {
     async function logout() {
         loading.value = true
         try {
-            // call logout Api if token exist
-
-            if (token.value){
+            // Call logout API if token exists
+            if (token.value) {
                 await authService.logout()
             }
-        }catch(err){
+        } catch(err) {
             console.error('Logout API error:', err)
         } finally {
-            // clear local state regardless of Api call result
+            // Clear all local state regardless of API call result
             user.value = null
             token.value = null
+
+            // Clear all auth-related items from localStorage
             localStorage.removeItem('token')
             localStorage.removeItem('user')
+            localStorage.removeItem('auth_token')
+            localStorage.removeItem('refresh_token')
+            localStorage.removeItem('token_expires_at')
+            localStorage.removeItem('token_type')
+            localStorage.removeItem('user_details')
+
+            // Also use authService clearTokens helper
+            authService.clearTokens()
+
             loading.value = false
+
+            console.log('✅ Logout successful - all tokens cleared')
         }
     }
     async function fetchCurrentUser() {
@@ -172,6 +192,13 @@ export const useAuthStore = defineStore('auth', () => {
       fetchCurrentUser().catch(() => {
         // Ignore error, user will be redirected to login if needed
       })
+    }
+
+    // DEVELOPMENT ONLY: Use mock user if no user is logged in
+    // Remove this in production
+    if (!user.value && !token.value) {
+      console.warn('⚠️ Using mock user for development testing')
+      user.value = mockUser
     }
   }
 

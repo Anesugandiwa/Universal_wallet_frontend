@@ -14,17 +14,17 @@ const authService = {
     formData.append('username', credentials.username)
     formData.append('password', credentials.password)
 
-    // Add client credentials if required
-    if (credentials.client_id) {
-      formData.append('client_id', credentials.client_id)
-    }
-    if (credentials.client_secret) {
-      formData.append('client_secret', credentials.client_secret)
-    }
+    // OAuth2 client credentials for admin portal
+    const clientId = credentials.client_id || 'admin-portal'
+    const clientSecret = credentials.client_secret || '#@U7HjucwxOa@BeFYvUcRyaVsM%MnQCv'
+
+    // Create Basic Auth header for client authentication
+    const basicAuth = btoa(`${clientId}:${clientSecret}`)
 
     return api.post('/auth/oauth/token', formData, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${basicAuth}`
       }
     })
   },

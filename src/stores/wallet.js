@@ -151,6 +151,28 @@ export const useWalletStore = defineStore('wallet', () => {
         localStorage.removeItem('currentWallet')
       }
     }
+
+    // DEVELOPMENT ONLY: Initialize with mock wallets if empty
+    // Remove this in production
+    if (wallets.value.length === 0) {
+      console.warn('⚠️ Using mock wallet data for development testing')
+      wallets.value = [
+        {
+          id: '1',
+          name: 'Main Wallet',
+          type: 'USD',
+          balance: 1250.50,
+          status: 'active'
+        },
+        {
+          id: '2',
+          name: 'Savings',
+          type: 'USD',
+          balance: 5000.00,
+          status: 'active'
+        }
+      ]
+    }
   }
 
   // Initialize on store creation

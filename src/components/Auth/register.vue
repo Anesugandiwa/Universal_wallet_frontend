@@ -5,6 +5,7 @@ import { ref, computed, onMounted } from 'vue'
   import BaseButton from '../ui/BaseButton.vue'
   import BaseSelect from '../ui/BaseSelect.vue'
   import iamService from '@/services/iamService'
+  import digitalWalletService from '@/services/digitalWalletService'
   import {
       UserIcon,
       EnvelopeIcon,
@@ -217,19 +218,11 @@ import { ref, computed, onMounted } from 'vue'
             delete userData.groupUuid
           }
 
-          console.log('Sending registration data:', userData)
+          console.log('📤 Sending registration data:', JSON.stringify(userData, null, 2))
 
-          // Try self-registration first (public endpoint)
-          let response
-          try {
-            response = await iamService.selfRegister(userData)
-            console.log('✅ Self-registration response:', response.data)
-          } catch (selfRegError) {
-            console.warn('Self-registration failed, trying admin endpoint:', selfRegError)
-            // Fallback to admin endpoint
-            response = await iamService.createUser(userData)
-            console.log('✅ Admin registration response:', response.data)
-          }
+          // Use first admin registration (bypasses auth requirement)
+          const response = await iamService.createFirstAdmin(userData)
+          console.log('✅ Admin user created:', response.data)
 
           console.log('Registration successful!')
           successMessage.value = 'Account created successfully! You can now login with your credentials.'
@@ -265,8 +258,7 @@ import { ref, computed, onMounted } from 'vue'
   }
 
   const goToLogin = () => {
-    console.log('⚠️ goToLogin called - NOT redirecting (disabled for debug)')
-    // router.push('/login')
+    router.push('/login')
   }
 </script>
 <template>
@@ -275,9 +267,8 @@ import { ref, computed, onMounted } from 'vue'
               <div class="bg-white rounded-2xl shadow-xl p-8">
                   <!-- Logo -->
                   <div class="text-center mb-8">
-                      <div class="h-16 w-16 rounded-full flex items-center justify-center mx-auto"
-                           style="background-color: var(--color-primary)">
-                          <span class="text-white text-2xl font-bold">UW</span>
+                      <div class="flex items-center justify-center mx-auto mb-4">
+                          <img src="@/assets/zblogo.png" alt="Universal Wallet Logo" class="h-20 w-auto" />
                       </div>
                       <h1 class="mt-4 text-2xl font-bold text-gray-900">Create Account</h1>
                       <p class="mt-2 text-sm text-gray-600">

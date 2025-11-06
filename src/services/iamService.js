@@ -15,9 +15,18 @@ const iamService = {
   },
 
   // Self-registration (public - no auth required)
-  // This might be the correct endpoint for public signup
+
   selfRegister(userData) {
     return api.post('/iam/opn/v1/users/register', userData)
+  },
+
+  // First admin registration (bypasses auth for initial setup)
+  createFirstAdmin(userData) {
+    return api.post('/iam/cmn/v1/users', userData, {
+      headers: {
+        'X-First-Admin-Registration': 'true'
+      }
+    })
   },
 
   // Get all users (paginated)

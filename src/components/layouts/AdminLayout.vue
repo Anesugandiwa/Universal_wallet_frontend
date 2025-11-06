@@ -132,14 +132,17 @@ import { useAuthStore } from '@/stores/auth'
 import { useWalletStore } from '@/stores/wallet'
 import {
   HomeIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  ArrowsRightLeftIcon,
   ClockIcon,
   UserIcon,
   Cog6ToothIcon,
   UsersIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  UserGroupIcon,
+  BanknotesIcon,
+  ChartBarIcon,
+  BuildingStorefrontIcon,
+  ShoppingBagIcon,
+  BellIcon
 } from '@heroicons/vue/24/outline'
 
 // Props
@@ -164,13 +167,26 @@ const walletStore = useWalletStore()
 
 // Navigation items for Universal Wallet Admin Portal
 const navigationItems = [
+  // Core Admin Functions
   { name: 'Dashboard', path: '/dashboard', icon: HomeIcon },
   { name: 'Users', path: '/users', icon: UsersIcon },
+  { name: 'Customers', path: '/customers', icon: UserGroupIcon },
   { name: 'Transactions', path: '/transactions', icon: ClockIcon },
-  { name: 'Send Money', path: '/send', icon: ArrowUpIcon },
-  { name: 'Receive Money', path: '/receive', icon: ArrowDownIcon },
-  { name: 'Exchange', path: '/exchange', icon: ArrowsRightLeftIcon },
+
+  // Financial Management
+  { name: 'Fees & Charges', path: '/fees', icon: BanknotesIcon },
+  { name: 'Commissions', path: '/commissions', icon: BanknotesIcon },
+
+  // Agents & Merchants (Optional)
+  { name: 'Agents', path: '/agents', icon: BuildingStorefrontIcon },
+  { name: 'Merchants', path: '/merchants', icon: ShoppingBagIcon },
+
+  // Reports & Monitoring
+  { name: 'Reports', path: '/reports', icon: ChartBarIcon },
   { name: 'Audit Logs', path: '/audit', icon: DocumentTextIcon },
+
+  // System Configuration
+  { name: 'Notifications', path: '/notifications', icon: BellIcon },
   { name: 'Settings', path: '/settings', icon: Cog6ToothIcon }
 ]
 

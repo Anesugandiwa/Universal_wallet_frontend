@@ -23,10 +23,28 @@ api.interceptors.request.use(
       data: config.data
     })
 
-    const token = localStorage.getItem('auth_token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+    // Check if this is a public endpoint (contains /opn/ in the URL)
+    // Also check for special admin registration flag
+    const isPublicEndpoint = config.url.includes('/opn/')
+    const isAdminRegistration = config.headers['X-First-Admin-Registration'] === 'true'
+
+    // Only add auth token for non-public endpoints and non-admin-registration
+    if (!isPublicEndpoint && !isAdminRegistration) {
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    } else {
+      if (isPublicEndpoint) {
+        console.log('🔓 Public endpoint detected - skipping auth token:', config.url)
+      }
+      if (isAdminRegistration) {
+        console.log('👤 First admin registration - skipping auth token:', config.url)
+        // Remove the special header so it doesn't get sent to server
+        delete config.headers['X-First-Admin-Registration']
+      }
     }
+
     return config
   },
   (error) => {

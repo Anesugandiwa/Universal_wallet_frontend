@@ -196,9 +196,8 @@
               <div class="bg-white rounded-2xl shadow-xl p-8">
                   <!-- Logo -->
                   <div class="text-center mb-8">
-                      <div class="h-16 w-16 rounded-full flex items-center justify-center mx-auto"
-                           style="background-color: var(--color-primary)">
-                          <span class="text-white text-2xl font-bold">UW</span>
+                      <div class="flex items-center justify-center mx-auto mb-4">
+                          <img src="@/assets/zblogo.png" alt="Universal Wallet Logo" class="h-20 w-auto" />
                       </div>
                       <h1 class="mt-4 text-2xl font-bold text-gray-900">Welcome Back</h1>
                       <p class="mt-2 text-sm text-gray-600">
