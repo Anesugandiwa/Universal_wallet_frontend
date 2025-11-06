@@ -340,9 +340,9 @@ import {
     ChevronRightIcon,
     TableCellsIcon
 } from '@heroicons/vue/24/solid'
-import BaseButton from '@/components/BaseButton.vue'
-import BaseInput from '@/components/BaseInput.vue'
-import IconButton from '@/components/IconButton.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import IconButton from '@/components/ui/IconButton.vue'
 
 const props = defineProps({
     // Data

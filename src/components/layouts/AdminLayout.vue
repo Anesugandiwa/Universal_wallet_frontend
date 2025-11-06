@@ -1,14 +1,14 @@
 <template>
-  <div class="flex h-screen bg-gray-100">
+  <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
     <!-- Sidebar -->
-    <aside class="w-72 bg-white shadow-lg flex flex-col">
+    <aside class="w-72 bg-white dark:bg-gray-800 shadow-lg flex flex-col">
       <!-- Top: App Name/Branding -->
-      <div class="p-6 border-b border-gray-200">
+      <div class="p-6 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-3">
           <img src="@/assets/zblogo.png" alt="ZB Logo" class="h-10 w-auto" />
           <div>
-            <h1 class="text-sm font-bold text-gray-900">Universal Wallet</h1>
-            <p class="text-xs text-gray-500">ZB Bank Digital Wallet</p>
+            <h1 class="text-sm font-bold text-gray-900 dark:!text-white">Universal Wallet</h1>
+            <p class="text-xs text-gray-500 dark:!text-gray-200">ZB Bank Digital Wallet</p>
           </div>
         </div>
       </div>
@@ -21,7 +21,7 @@
               :to="item.path"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
               :style="isActive(item.path) ? 'background-color: #058f1f; color: white;' : ''"
-              :class="isActive(item.path) ? '' : 'text-gray-900 hover:bg-gray-100'"
+              :class="isActive(item.path) ? '' : 'text-gray-900 dark:!text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'"
             >
               <component :is="item.icon" class="h-5 w-5" />
               {{ item.name }}
@@ -31,17 +31,17 @@
       </nav>
 
       <!-- Bottom: User Profile & Logout -->
-      <div class="p-4 border-t border-gray-200 relative">
+      <div class="p-4 border-t border-gray-200 dark:border-gray-700 relative">
         <button
           @click="toggleDropdown"
-          class="w-full flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg transition-colors"
+          class="w-full flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded-lg transition-colors"
         >
           <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold" style="background-color: #058f1f;">
             {{ userInitials }}
           </div>
           <div class="flex-1 text-left">
-            <p class="text-sm font-medium text-gray-900">{{ userName }}</p>
-            <p class="text-xs text-gray-500">{{ userEmail }}</p>
+            <p class="text-sm font-medium text-gray-900 dark:!text-white">{{ userName }}</p>
+            <p class="text-xs text-gray-500 dark:!text-gray-200">{{ userEmail }}</p>
           </div>
           <svg
             class="h-4 w-4 text-gray-400 transition-transform"
@@ -57,12 +57,12 @@
         <!-- Dropdown Menu -->
         <div
           v-if="showDropdown"
-          class="absolute bottom-full left-0 right-0 mb-2 mx-4 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden"
+          class="absolute bottom-full left-0 right-0 mb-2 mx-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden"
         >
           <router-link
             to="/profile"
             @click="showDropdown = false"
-            class="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-gray-700 text-sm font-medium transition-colors"
+            class="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:!text-gray-100 text-sm font-medium transition-colors"
           >
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -71,7 +71,7 @@
           </router-link>
           <button
             @click="handleLogout"
-            class="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 text-red-600 text-sm font-medium transition-colors border-t border-gray-100"
+            class="w-full flex items-center gap-2 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-600 text-red-600 dark:text-red-400 text-sm font-medium transition-colors border-t border-gray-100 dark:border-gray-600"
           >
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -85,26 +85,25 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- Top Bar -->
-      <header class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+      <header class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div class="flex justify-between items-center">
           <div>
-            <h2 class="text-xl font-semibold text-gray-900">{{ pageTitle }}</h2>
-            <p class="text-sm text-gray-500 mt-1">{{ pageSubtitle }}</p>
+            <h2 class="text-xl font-semibold text-gray-900 dark:!text-white">Universal Wallet</h2>
           </div>
 
           <!-- Quick Info Display -->
           <div class="flex items-center gap-6">
             <div class="text-right">
-              <p class="text-xs text-gray-500">Total Balance</p>
-              <p class="text-lg font-bold text-gray-900">{{ formatCurrency(totalBalance) }}</p>
+              <p class="text-xs text-gray-500 dark:!text-gray-200">Total Balance</p>
+              <p class="text-lg font-bold text-gray-900 dark:!text-white">{{ formatCurrency(totalBalance) }}</p>
             </div>
             <button
               @click="refreshBalance"
-              class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               title="Refresh Balance"
             >
               <svg
-                class="h-5 w-5 text-gray-600"
+                class="h-5 w-5 text-gray-600 dark:text-gray-400"
                 :class="{ 'animate-spin': isRefreshing }"
                 fill="none"
                 viewBox="0 0 24 24"

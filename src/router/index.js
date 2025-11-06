@@ -5,6 +5,7 @@ import Register from '../components/Auth/register.vue'
 import ForgotPassword from '../components/Auth/ForgotPassword.vue'
 import ResetPassword from '../components/Auth/ResetPassword.vue'
 import Dashboard from '../views/Dashboard.vue'
+import Agents from '../views/admin/Agents.vue'
 
 const routes = [
   {
@@ -55,7 +56,7 @@ const routes = [
   {
     path: '/agents',
     name: 'Agents',
-    //component: () => import('../views/admin/Agents.vue'),
+    component: Agents,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
