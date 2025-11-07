@@ -6,6 +6,8 @@ import ForgotPassword from '../components/Auth/ForgotPassword.vue'
 import ResetPassword from '../components/Auth/ResetPassword.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Agents from '../views/admin/Agents.vue'
+import Customers from '../views/admin/Customers.vue'
+import Banks from '../views/admin/Banks.vue'
 
 const routes = [
   {
@@ -28,7 +30,7 @@ const routes = [
   {
     path: '/customers',
     name: 'Customers',
-    //component: () => import('../views/admin/Customers.vue'),
+    component: Customers,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
   {
@@ -63,6 +65,14 @@ const routes = [
     path: '/merchants',
     name: 'Merchants',
     //component: () => import('../views/admin/Merchants.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+
+  // Banking & Financial Institutions
+  {
+    path: '/banks',
+    name: 'Banks',
+    component: Banks,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
 

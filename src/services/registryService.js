@@ -47,11 +47,31 @@ const registryService = {
   // CUSTOMERS MANAGEMENT (Registry)
   // ============================================
 
-  // Get all customers (for selecting agent's customer)
+  // Create new customer (Admin)
+  createCustomer(customerData) {
+    return api.post('/registry/admin/v1/customers', customerData)
+  },
+
+  // Get all customers (Admin - paginated)
   getCustomers(pagination = { page: 0, size: 20 }) {
     return api.get('/registry/admin/v1/customers', {
       params: pagination
     })
+  },
+
+  // Get customer by UUID (Admin)
+  getCustomer(uuid) {
+    return api.get(`/registry/admin/v1/customers/${uuid}`)
+  },
+
+  // Update customer (Admin)
+  updateCustomer(uuid, customerData) {
+    return api.put(`/registry/admin/v1/customers/${uuid}`, customerData)
+  },
+
+  // Delete customer (Admin)
+  deleteCustomer(uuid) {
+    return api.delete(`/registry/admin/v1/customers/${uuid}`)
   },
 
   // Search customer by identifier
@@ -59,6 +79,37 @@ const registryService = {
     return api.get('/registry/admin/v1/customers/identifier-search', {
       params: { identifier }
     })
+  },
+
+  // ============================================
+  // BANKS MANAGEMENT (Registry)
+  // ============================================
+
+  // Create new bank (Admin)
+  createBank(bankData) {
+    return api.post('/registry/admin/v1/banks', bankData)
+  },
+
+  // Get all banks (Admin - paginated)
+  getBanks(pagination = { page: 0, size: 20 }) {
+    return api.get('/registry/admin/v1/banks', {
+      params: pagination
+    })
+  },
+
+  // Get bank by UUID (Admin)
+  getBank(uuid) {
+    return api.get(`/registry/admin/v1/banks/${uuid}`)
+  },
+
+  // Update bank (Admin)
+  updateBank(uuid, bankData) {
+    return api.put(`/registry/admin/v1/banks/${uuid}`, bankData)
+  },
+
+  // Delete bank (Admin)
+  deleteBank(uuid) {
+    return api.delete(`/registry/admin/v1/banks/${uuid}`)
   }
 }
 

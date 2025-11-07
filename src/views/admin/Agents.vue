@@ -3,9 +3,22 @@
     <div class="space-y-6">
       <!-- Page Header -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-bold text-gray-900 dark:!text-white">Agents Management</h2>
-        <p class="mt-2 text-sm text-gray-600 dark:!text-gray-200">Manage cash-in/cash-out agents</p>
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:!text-white">Agents Management</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:!text-gray-200">Manage cash-in/cash-out agents</p>
+          </div>
+          <button
+            @click="openCreateDialog"
+            class="inline-flex items-center px-4 py-2 bg-[#058f1f] hover:bg-[#047017] dark:bg-[#058f1f] dark:hover:bg-[#06b525] text-white font-medium rounded-lg shadow-md transition-colors duration-200"
+          >
+            <PlusIcon class="h-5 w-5 mr-2" />
+            Add Agent
+          </button>
+        </div>
       </div>
+
+      
 
       <!-- Agents DataTable -->
       <DataTable
@@ -14,12 +27,6 @@
         :data="agents"
         :columns="columns"
         :actions="tableActions"
-        :action-button="{
-          text: 'Add New Agent',
-          icon: PlusIcon,
-          variant: 'primary',
-          class: 'bg-[#058f1f] hover:bg-[#047017] dark:bg-[#058f1f] dark:hover:bg-[#06b525]'
-        }"
         :searchable="true"
         search-placeholder="Search by location, city..."
         :paginated="true"
@@ -112,10 +119,10 @@
             v-model="agentForm.agentTiers[0]"
             label="Agent Tier"
             :options="[
-              { value: 'AGENT', label: 'Agent' },
-              { value: 'SUPER_AGENT', label: 'Super Agent' }
+              { value: 'AGENT', label: 'Agent' }
             ]"
             :required="true"
+            hint="Standard agent for cash-in/cash-out operations"
           />
 
           <!-- Location Section -->
@@ -380,6 +387,20 @@ const submitAgent = async () => {
       console.log('👤 Current user:', user)
       console.log('👤 User authorities:', user.authorities)
       console.log('👤 User roles:', user.roles)
+
+      // Check if user has required permissions
+      const hasAdminAuth = user.authorities?.some(auth =>
+        auth.authority === 'ADMIN' ||
+        auth.authority === 'AGENT_CREATE' ||
+        auth.authority === 'AGENT_WRITE' ||
+        auth.authority === 'REGISTRY_ADMIN'
+      )
+      console.log('👤 Has agent creation permission:', hasAdminAuth)
+
+      if (!hasAdminAuth) {
+        console.warn('⚠️ User may not have sufficient permissions to create agents')
+        console.warn('⚠️ Required permissions: AGENT_CREATE, AGENT_WRITE, REGISTRY_ADMIN, or ADMIN')
+      }
     }
 
     if (editMode.value) {
@@ -399,10 +420,21 @@ const submitAgent = async () => {
     console.error('❌ Error data:', err.response?.data)
 
     // Show more detailed error message
-    const errorMsg = err.response?.data?.message ||
-                     err.response?.data?.error ||
-                     err.message ||
-                     'Failed to save agent'
+    let errorMsg = err.response?.data?.message ||
+                   err.response?.data?.error ||
+                   err.message ||
+                   'Failed to save agent'
+
+    // Handle 403 Forbidden specifically
+    if (err.response?.status === 403) {
+      errorMsg = 'Access Denied: You do not have permission to create agents. Please contact your administrator to grant you the required permissions (AGENT_CREATE, AGENT_WRITE, or REGISTRY_ADMIN).'
+    }
+
+    // Handle enum validation errors (400)
+    if (err.response?.status === 400 && err.response?.data?.message?.includes('AgentTier')) {
+      errorMsg = 'Invalid agent tier selected. Please try again.'
+    }
+
     formError.value = `${errorMsg} (Status: ${err.response?.status || 'Unknown'})`
   } finally {
     submitting.value = false
