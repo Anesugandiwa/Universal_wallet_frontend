@@ -155,6 +155,11 @@ const iamService = {
     })
   },
 
+  // Get all groups (no pagination)
+  getAllGroups() {
+    return api.get('/iam/cmn/v1/groups/all')
+  },
+
   updateGroup(uuid, groupData) {
     return api.put(`/iam/cmn/v1/groups/${uuid}`, groupData)
   },

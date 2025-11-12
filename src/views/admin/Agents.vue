@@ -104,15 +104,33 @@
 
         <!-- Dialog Body -->
         <form @submit.prevent="submitAgent" class="p-6 space-y-6">
-          <!-- Customer UUID -->
-          <BaseInput
-            v-model="agentForm.customerUuid"
-            label="Customer UUID"
-            placeholder="Enter customer UUID"
-            :required="true"
-            :error="formErrors.customerUuid"
-            hint="The UUID of the customer who will be the agent"
-          />
+          <!-- Customer Selection -->
+          <div>
+            <BaseSelect
+              v-if="customers.length > 0"
+              v-model="agentForm.customerUuid"
+              label="Select Customer"
+              :options="customers.map(c => ({
+                value: c.uuid,
+                label: `${c.firstName} ${c.lastName} - ${c.mobileNumber || c.email || c.nationalId || c.uuid}`
+              }))"
+              :required="true"
+              :error="formErrors.customerUuid"
+              hint="Select the customer who will become an agent"
+            />
+            <BaseInput
+              v-else
+              v-model="agentForm.customerUuid"
+              label="Customer UUID"
+              placeholder="Enter customer UUID manually"
+              :required="true"
+              :error="formErrors.customerUuid"
+              hint="The UUID of the customer who will be the agent"
+            />
+            <p v-if="loadingCustomers" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Loading customers...
+            </p>
+          </div>
 
           <!-- Agent Tier -->
           <BaseSelect
@@ -215,7 +233,9 @@ import { PlusIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outl
 
 // State
 const agents = ref([])
+const customers = ref([])
 const loading = ref(false)
+const loadingCustomers = ref(false)
 const error = ref(null)
 
 // Dialog State
@@ -295,18 +315,16 @@ const fetchAgents = async () => {
   error.value = null
 
   try {
-    const response = await registryService.getAgents({
-      page: 0,
-      size: 100
-    })
+    const response = await registryService.getAllAgents()
 
     console.log('✅ Agents fetched:', response.data)
 
-    // Handle paginated response
-    if (response.data.content) {
-      agents.value = response.data.content
-    } else if (Array.isArray(response.data)) {
+    // Handle response - expecting an array
+    if (Array.isArray(response.data)) {
       agents.value = response.data
+    } else if (response.data.content) {
+      // Fallback for paginated response
+      agents.value = response.data.content
     } else {
       agents.value = []
     }
@@ -336,6 +354,7 @@ const handleTableAction = ({ action, item }) => {
 const openCreateDialog = () => {
   editMode.value = false
   resetForm()
+  fetchCustomers()
   showDialog.value = true
 }
 
@@ -465,6 +484,33 @@ const deleteAgentConfirm = async (agent) => {
       console.error('❌ Error deleting agent:', err)
       alert(err.response?.data?.message || 'Failed to delete agent')
     }
+  }
+}
+
+const fetchCustomers = async () => {
+  loadingCustomers.value = true
+
+  try {
+    const response = await registryService.getCustomers({
+      page: 0,
+      size: 100
+    })
+
+    console.log('✅ Customers fetched:', response.data)
+
+    // Handle paginated response
+    if (response.data.content) {
+      customers.value = response.data.content
+    } else if (Array.isArray(response.data)) {
+      customers.value = response.data
+    } else {
+      customers.value = []
+    }
+  } catch (err) {
+    console.error('❌ Error fetching customers:', err)
+    customers.value = []
+  } finally {
+    loadingCustomers.value = false
   }
 }
 

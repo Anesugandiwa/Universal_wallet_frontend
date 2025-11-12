@@ -11,7 +11,12 @@ const registryService = {
     return api.post('/registry/admin/v1/agents', agentData)
   },
 
-  // Get all agents (Admin - paginated)
+  // Get all agents (Common - no pagination)
+  getAllAgents() {
+    return api.get('/registry/cmn/v1/agents/all')
+  },
+
+  // Get all agents (Admin - paginated) - DEPRECATED, use getAllAgents instead
   getAgents(pagination = { page: 0, size: 20 }) {
     return api.get('/registry/admin/v1/agents', {
       params: pagination
@@ -31,11 +36,6 @@ const registryService = {
   // Delete agent (Admin)
   deleteAgent(uuid) {
     return api.delete(`/registry/admin/v1/agents/${uuid}`)
-  },
-
-  // Get all agents (Common - no pagination)
-  getAllAgents() {
-    return api.get('/registry/cmn/v1/agents/all')
   },
 
   // Get agent tiers/classifications
@@ -81,6 +81,11 @@ const registryService = {
     })
   },
 
+  // Get customer types (enum values)
+  getCustomerTypes() {
+    return api.get('/registry/admin/v1/customers-types')
+  },
+
   // ============================================
   // BANKS MANAGEMENT (Registry)
   // ============================================
@@ -110,6 +115,42 @@ const registryService = {
   // Delete bank (Admin)
   deleteBank(uuid) {
     return api.delete(`/registry/admin/v1/banks/${uuid}`)
+  },
+
+  // ============================================
+  // BRANCHES MANAGEMENT (Registry)
+  // ============================================
+
+  // Create new branch (Admin)
+  createBranch(branchData) {
+    return api.post('/registry/admin/v1/branches', branchData)
+  },
+
+  // Get all branches (Admin - paginated)
+  getBranches(pagination = { page: 0, size: 20 }) {
+    return api.get('/registry/admin/v1/branches', {
+      params: pagination
+    })
+  },
+
+  // Get branch by UUID (Admin)
+  getBranch(uuid) {
+    return api.get(`/registry/admin/v1/branches/${uuid}`)
+  },
+
+  // Update branch (Admin)
+  updateBranch(uuid, branchData) {
+    return api.put(`/registry/admin/v1/branches/${uuid}`, branchData)
+  },
+
+  // Delete branch (Admin)
+  deleteBranch(uuid) {
+    return api.delete(`/registry/admin/v1/branches/${uuid}`)
+  },
+
+  // Get branches by bank UUID (Common)
+  getBranchesByBank(bankUuid) {
+    return api.get(`/registry/cmn/v1/branches/bank/${bankUuid}`)
   }
 }
 

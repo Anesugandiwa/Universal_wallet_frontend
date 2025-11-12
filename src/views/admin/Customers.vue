@@ -126,15 +126,21 @@
                   />
 
                   <!-- Customer Type -->
-                  <BaseSelect
-                    v-model="customerForm.customerType"
-                    label="Customer Type"
-                    :options="[
-                      { value: 'INDIVIDUAL', label: 'Individual' },
-                      { value: 'BUSINESS', label: 'Business' }
-                    ]"
-                    :required="true"
-                  />
+                  <div>
+                    <BaseSelect
+                      v-model="customerForm.customerType"
+                      label="Customer Type"
+                      :options="customerTypes.map(type => ({
+                        value: type,
+                        label: type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                      }))"
+                      :required="true"
+                      :disabled="loadingCustomerTypes"
+                    />
+                    <p v-if="loadingCustomerTypes" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      Loading customer types...
+                    </p>
+                  </div>
 
                   <!-- Status -->
                   <BaseSelect
@@ -248,22 +254,44 @@
                 <h4 class="text-lg font-semibold text-gray-900 dark:!text-white mb-4">Branch Information</h4>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <!-- Branch UUID -->
-                  <BaseInput
-                    v-model="customerForm.branchUuid"
-                    label="Branch UUID"
-                    placeholder="Enter branch UUID"
-                    :required="true"
-                    :error="formErrors.branchUuid"
-                    hint="The UUID of the branch this customer belongs to"
-                  />
+                  <!-- Branch Selection -->
+                  <div class="md:col-span-2">
+                    <BaseSelect
+                      v-if="branches.length > 0"
+                      v-model="customerForm.branchUuid"
+                      label="Select Branch"
+                      :options="branches.map(b => ({
+                        value: b.uuid,
+                        label: `${b.name || b.branchName || 'Unnamed Branch'} - ${b.city || b.location?.city || ''} (${b.branchCode || b.code || b.uuid})`
+                      }))"
+                      :required="true"
+                      :error="formErrors.branchUuid"
+                      hint="Select the branch this customer belongs to"
+                    />
+                    <BaseInput
+                      v-else
+                      v-model="customerForm.branchUuid"
+                      label="Branch UUID"
+                      placeholder="Enter branch UUID manually"
+                      :required="true"
+                      :error="formErrors.branchUuid"
+                      hint="The UUID of the branch this customer belongs to"
+                    />
+                    <p v-if="loadingBranches" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                      Loading branches...
+                    </p>
+                    <p v-else-if="branches.length === 0" class="text-sm text-amber-600 dark:text-amber-400 mt-2">
+                      ⚠️ No branches available. Please create a branch first or enter branch UUID manually above.
+                    </p>
+                  </div>
 
                   <!-- Branch (alternative) -->
                   <BaseInput
                     v-model="customerForm.branch"
-                    label="Branch Name/Code"
+                    label="Branch Name/Code (Optional)"
                     placeholder="e.g., Harare Main"
                     hint="Alternative branch identifier"
+                    class="md:col-span-2"
                   />
                 </div>
               </div>
@@ -345,15 +373,36 @@
                       hint="Automatically uses customer's mobile"
                     />
 
-                    <!-- Group UUID -->
-                    <BaseInput
-                      v-model="customerForm.createUserCommand.groupUuid"
-                      label="Group UUID"
-                      placeholder="Enter user group UUID"
-                      :required="createUserAccount"
-                      :error="formErrors.groupUuid"
-                      hint="User group for permissions"
-                    />
+                    <!-- Group Selection -->
+                    <div>
+                      <BaseSelect
+                        v-if="groups.length > 0"
+                        v-model="customerForm.createUserCommand.groupUuid"
+                        label="User Group"
+                        :options="groups.map(g => ({
+                          value: g.uuid,
+                          label: `${g.name || g.groupName || 'Unnamed Group'} ${g.description ? '- ' + g.description : ''}`
+                        }))"
+                        :required="createUserAccount"
+                        :error="formErrors.groupUuid"
+                        hint="Select user group for permissions"
+                      />
+                      <BaseInput
+                        v-else
+                        v-model="customerForm.createUserCommand.groupUuid"
+                        label="Group UUID"
+                        placeholder="Enter user group UUID manually"
+                        :required="createUserAccount"
+                        :error="formErrors.groupUuid"
+                        hint="User group for permissions"
+                      />
+                      <p v-if="loadingGroups" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        Loading groups...
+                      </p>
+                      <p v-else-if="groups.length === 0" class="text-sm text-amber-600 dark:text-amber-400 mt-2">
+                        ⚠️ No groups available. Please create a group first or enter group UUID manually above.
+                      </p>
+                    </div>
 
                     <!-- Tenant ID -->
                     <BaseInput
@@ -388,11 +437,18 @@ import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseSelect from '@/components/ui/BaseSelect.vue'
 import FormStepper from '@/components/ui/FormStepper.vue'
 import registryService from '@/services/registryService'
+import iamService from '@/services/iamService'
 import { PlusIcon, EyeIcon, PencilIcon, TrashIcon } from '@heroicons/vue/24/outline'
 
 // State
 const customers = ref([])
+const branches = ref([])
+const groups = ref([])
+const customerTypes = ref([])
 const loading = ref(false)
+const loadingBranches = ref(false)
+const loadingGroups = ref(false)
+const loadingCustomerTypes = ref(false)
 const error = ref(null)
 
 // Dialog State
@@ -596,6 +652,9 @@ const handleTableAction = ({ action, item }) => {
 const openCreateDialog = () => {
   editMode.value = false
   resetForm()
+  fetchBranches()
+  fetchGroups()
+  fetchCustomerTypes()
   showDialog.value = true
 }
 
@@ -713,6 +772,81 @@ const deleteCustomerConfirm = async (customer) => {
       console.error('❌ Error deleting customer:', err)
       alert(err.response?.data?.message || 'Failed to delete customer')
     }
+  }
+}
+
+const fetchBranches = async () => {
+  loadingBranches.value = true
+
+  try {
+    const response = await registryService.getBranches({
+      page: 0,
+      size: 100
+    })
+
+    console.log('✅ Branches fetched:', response.data)
+
+    // Handle paginated response
+    if (response.data.content) {
+      branches.value = response.data.content
+    } else if (Array.isArray(response.data)) {
+      branches.value = response.data
+    } else {
+      branches.value = []
+    }
+  } catch (err) {
+    console.error('❌ Error fetching branches:', err)
+    branches.value = []
+  } finally {
+    loadingBranches.value = false
+  }
+}
+
+const fetchGroups = async () => {
+  loadingGroups.value = true
+
+  try {
+    const response = await iamService.getAllGroups()
+
+    console.log('✅ Groups fetched:', response.data)
+
+    // Handle response - expecting an array
+    if (Array.isArray(response.data)) {
+      groups.value = response.data
+    } else if (response.data.content) {
+      // Fallback for paginated response
+      groups.value = response.data.content
+    } else {
+      groups.value = []
+    }
+  } catch (err) {
+    console.error('❌ Error fetching groups:', err)
+    groups.value = []
+  } finally {
+    loadingGroups.value = false
+  }
+}
+
+const fetchCustomerTypes = async () => {
+  loadingCustomerTypes.value = true
+
+  try {
+    const response = await registryService.getCustomerTypes()
+
+    console.log('✅ Customer types fetched:', response.data)
+
+    // Handle response - expecting an array of enum values
+    if (Array.isArray(response.data)) {
+      customerTypes.value = response.data
+    } else {
+      customerTypes.value = []
+    }
+  } catch (err) {
+    console.error('❌ Error fetching customer types:', err)
+    // Fallback to default types if fetch fails
+    customerTypes.value = ['INDIVIDUAL', 'CORPORATE', 'GROUP', 'STAFF', 'NON_RESIDENT', 'REFUGEE']
+  } finally {
+    loadingCustomerTypes.value = false
   }
 }
 

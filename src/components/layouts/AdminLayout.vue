@@ -141,6 +141,7 @@ import {
   ChartBarIcon,
   BuildingStorefrontIcon,
   BuildingLibraryIcon,
+  BuildingOfficeIcon ,
   ShoppingBagIcon,
   BellIcon
 } from '@heroicons/vue/24/outline'
@@ -181,6 +182,7 @@ const navigationItems = [
   { name: 'Agents', path: '/agents', icon: BuildingStorefrontIcon },
   { name: 'Merchants', path: '/merchants', icon: ShoppingBagIcon },
   {name: 'Banks', path: '/banks', icon: BuildingLibraryIcon},
+  {name: 'Branches', path: '/branches', icon: BuildingOfficeIcon },
 
   // Reports & Monitoring
   { name: 'Reports', path: '/reports', icon: ChartBarIcon },

@@ -8,6 +8,7 @@ import Dashboard from '../views/Dashboard.vue'
 import Agents from '../views/admin/Agents.vue'
 import Customers from '../views/admin/Customers.vue'
 import Banks from '../views/admin/Banks.vue'
+import Branches from '../views/admin/Branches.vue'
 
 const routes = [
   {
@@ -73,6 +74,12 @@ const routes = [
     path: '/banks',
     name: 'Banks',
     component: Banks,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
+  {
+    path: '/branches',
+    name: 'Branches',
+    component: Branches,
     meta: { requiresAuth: true, requiresAdmin: true }
   },
 
